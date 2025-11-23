@@ -108,6 +108,34 @@ python -m pytest tests/
 python pipeline.py --image test.jpg --debug
 ```
 
+## 🧪 Testing
+
+The pipeline has been tested for:
+- ✅ Module imports and syntax
+- ✅ CLI interface
+- ✅ LaTeX validation logic
+- ✅ Image preprocessing
+- ⏸️ Full pipeline (requires OpenAI API key + LaTeX installation)
+
+**See [TEST_REPORT.md](TEST_REPORT.md) for detailed test results and coverage.**
+
+To test yourself:
+```bash
+# Quick test (no external dependencies)
+python -c "from pipeline import ImageToLaTeXPipeline; print('✅ OK')"
+
+# Full test (requires API key + LaTeX)
+python pipeline.py --image examples/test.jpg --debug
+```
+
+## 📚 Documentation
+
+- **[README.md](README.md)** - This file, project overview
+- **[INSTALL.md](INSTALL.md)** - Detailed installation instructions
+- **[USAGE.md](USAGE.md)** - Complete usage guide with examples
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design and technical details
+- **[TEST_REPORT.md](TEST_REPORT.md)** - Test results and coverage
+
 ## 📄 License
 
 MIT License
