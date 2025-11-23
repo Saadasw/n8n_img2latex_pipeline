@@ -68,12 +68,31 @@ Image Upload
 ├── utils/
 │   ├── image_processor.py         # Image preprocessing
 │   └── latex_compiler.py          # LaTeX utilities
+├── n8n_workflows/                 # n8n workflow configurations
+│   ├── README.md                  # n8n setup guide
+│   └── image_to_latex_workflow.json
+├── test_images/                   # Sample test images for testing
+│   └── README.md                  # Image guidelines
+├── latex_samples/                 # Sample LaTeX outputs
+│   ├── README.md                  # How to test on Overleaf
+│   ├── sample_basic_math.tex      # Basic math examples
+│   ├── sample_advanced_math.tex   # Advanced topics
+│   ├── sample_two_column.tex      # Two-column layout
+│   ├── sample_mcq_format.tex      # MCQ format
+│   └── sample_bengali_mixed.tex   # Bengali-English mixed
 ├── examples/
-│   └── sample_test.jpg            # Example test image
+│   ├── demo.py                    # Demo scripts
+│   └── README.md
 ├── output/                        # Generated PDFs
+├── temp/                          # Temporary files
 ├── pipeline.py                    # Main orchestrator
 ├── config.py                      # Configuration
-└── requirements.txt               # Dependencies
+├── requirements.txt               # Dependencies
+├── README.md                      # This file
+├── INSTALL.md                     # Installation guide
+├── USAGE.md                       # Usage documentation
+├── ARCHITECTURE.md                # Technical design
+└── TEST_REPORT.md                 # Test results
 ```
 
 ## 🔧 Configuration
@@ -108,6 +127,36 @@ python -m pytest tests/
 python pipeline.py --image test.jpg --debug
 ```
 
+## 📦 Additional Resources
+
+### 🔗 n8n Workflows
+Pre-configured n8n workflows for easy integration:
+- **[n8n_workflows/](n8n_workflows/)** - Ready-to-import workflow files
+- Webhook-based image processing
+- Batch processing workflows
+- See [n8n_workflows/README.md](n8n_workflows/README.md) for setup
+
+### 🖼️ Test Images
+Sample test images for testing the pipeline:
+- **[test_images/](test_images/)** - Folder for your test images
+- Guidelines for image quality
+- See [test_images/README.md](test_images/README.md) for tips
+
+### 📝 LaTeX Samples
+Ready-to-test LaTeX code for Overleaf:
+- **[latex_samples/](latex_samples/)** - Copy-paste ready LaTeX files
+- `sample_basic_math.tex` - Basic math examples
+- `sample_advanced_math.tex` - Complex formulas
+- `sample_two_column.tex` - Two-column layout
+- `sample_mcq_format.tex` - Multiple choice format
+- `sample_bengali_mixed.tex` - Bengali-English mixed
+
+**To test on Overleaf:**
+1. Go to [Overleaf](https://www.overleaf.com)
+2. Create new project
+3. Copy content from any `.tex` file in `latex_samples/`
+4. Paste and compile!
+
 ## 🧪 Testing
 
 The pipeline has been tested for:
@@ -130,11 +179,18 @@ python pipeline.py --image examples/test.jpg --debug
 
 ## 📚 Documentation
 
+### Core Documentation
 - **[README.md](README.md)** - This file, project overview
 - **[INSTALL.md](INSTALL.md)** - Detailed installation instructions
 - **[USAGE.md](USAGE.md)** - Complete usage guide with examples
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System design and technical details
 - **[TEST_REPORT.md](TEST_REPORT.md)** - Test results and coverage
+
+### Resource Folders
+- **[n8n_workflows/](n8n_workflows/)** - n8n workflow configurations and setup
+- **[test_images/](test_images/)** - Test image folder with guidelines
+- **[latex_samples/](latex_samples/)** - Sample LaTeX files for Overleaf testing
+- **[examples/](examples/)** - Demo scripts and examples
 
 ## 📄 License
 

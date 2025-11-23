@@ -1,0 +1,138 @@
+{
+  "name": "Image to LaTeX Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "image-to-latex",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "id": "webhook-1",
+      "name": "Webhook: Upload Image",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "image-to-latex-webhook"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Extract image from binary data\nconst binaryData = items[0].binary.image;\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\nconst filename = `test_${timestamp}.jpg`;\nconst outputName = $json.outputName || `solution_${timestamp}`;\n\nreturn {\n  imagePath: `/tmp/${filename}`,\n  outputName: outputName,\n  binaryData: binaryData\n};"
+      },
+      "id": "function-1",
+      "name": "Prepare Parameters",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "command": "cd /path/to/n8n_img2latex_pipeline && python pipeline.py --image {{ $json.imagePath }} --output {{ $json.outputName }}",
+        "timeout": 120
+      },
+      "id": "execute-1",
+      "name": "Run Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "if-1",
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "filePath": "={{ $json.pdfPath }}",
+        "options": {}
+      },
+      "id": "read-file-1",
+      "name": "Read PDF File",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [1050, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/pdf"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "attachment; filename={{ $json.outputName }}.pdf"
+              }
+            ]
+          }
+        }
+      },
+      "id": "respond-success",
+      "name": "Return PDF",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"error\": $json.error, \"message\": \"Pipeline failed\" } }}",
+        "options": {
+          "responseCode": 500
+        }
+      },
+      "id": "respond-error",
+      "name": "Return Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    }
+  ],
+  "connections": {
+    "Webhook: Upload Image": {
+      "main": [[{ "node": "Prepare Parameters", "type": "main", "index": 0 }]]
+    },
+    "Prepare Parameters": {
+      "main": [[{ "node": "Run Pipeline", "type": "main", "index": 0 }]]
+    },
+    "Run Pipeline": {
+      "main": [[{ "node": "Check Success", "type": "main", "index": 0 }]]
+    },
+    "Check Success": {
+      "main": [
+        [{ "node": "Read PDF File", "type": "main", "index": 0 }],
+        [{ "node": "Return Error", "type": "main", "index": 0 }]
+      ]
+    },
+    "Read PDF File": {
+      "main": [[{ "node": "Return PDF", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "your-instance-id"
+  },
+  "tags": ["image-processing", "latex", "ai", "pdf"],
+  "updatedAt": "2024-11-23T00:00:00.000Z",
+  "createdAt": "2024-11-23T00:00:00.000Z"
+}

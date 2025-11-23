@@ -1,0 +1,154 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{Advanced Mathematics Test}
+\author{Image to LaTeX Pipeline Demo}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Calculus and Analysis}
+
+\subsection*{Question 1: Double Integral}
+Evaluate the double integral:
+$$\iint_D xy \, dA$$
+where $D$ is the region bounded by $y = x^2$ and $y = x$ in the first quadrant.
+
+\textbf{Solution:}
+
+First, find the intersection points:
+\begin{align*}
+    x^2 &= x \\
+    x^2 - x &= 0 \\
+    x(x - 1) &= 0
+\end{align*}
+
+So $x = 0$ and $x = 1$. The region is described by $0 \leq x \leq 1$ and $x^2 \leq y \leq x$.
+
+\begin{align*}
+    \iint_D xy \, dA &= \int_0^1 \int_{x^2}^x xy \, dy \, dx \\
+    &= \int_0^1 x \left[\frac{y^2}{2}\right]_{x^2}^x dx \\
+    &= \int_0^1 x \left(\frac{x^2}{2} - \frac{x^4}{2}\right) dx \\
+    &= \int_0^1 \left(\frac{x^3}{2} - \frac{x^5}{2}\right) dx \\
+    &= \left[\frac{x^4}{8} - \frac{x^6}{12}\right]_0^1 \\
+    &= \frac{1}{8} - \frac{1}{12} \\
+    &= \frac{3 - 2}{24} = \frac{1}{24}
+\end{align*}
+
+\textbf{Answer:} $\boxed{\frac{1}{24}}$
+
+\subsection*{Question 2: Series Convergence}
+Determine if the series converges:
+$$\sum_{n=1}^{\infty} \frac{n^2}{2^n}$$
+
+\textbf{Solution:}
+
+We'll use the ratio test. Let $a_n = \frac{n^2}{2^n}$.
+
+\begin{align*}
+    \lim_{n \to \infty} \left|\frac{a_{n+1}}{a_n}\right| &= \lim_{n \to \infty} \frac{(n+1)^2}{2^{n+1}} \cdot \frac{2^n}{n^2} \\
+    &= \lim_{n \to \infty} \frac{(n+1)^2}{2n^2} \\
+    &= \lim_{n \to \infty} \frac{n^2 + 2n + 1}{2n^2} \\
+    &= \lim_{n \to \infty} \left(\frac{1}{2} + \frac{1}{n} + \frac{1}{2n^2}\right) \\
+    &= \frac{1}{2} < 1
+\end{align*}
+
+\textbf{Answer:} The series \textbf{converges} by the ratio test.
+
+\section{Linear Algebra}
+
+\subsection*{Question 3: Matrix Eigenvalues}
+Find the eigenvalues of the matrix:
+$$A = \begin{pmatrix} 3 & 1 \\ 1 & 3 \end{pmatrix}$$
+
+\textbf{Solution:}
+
+The characteristic equation is:
+\begin{align*}
+    \det(A - \lambda I) &= 0 \\
+    \begin{vmatrix} 3-\lambda & 1 \\ 1 & 3-\lambda \end{vmatrix} &= 0 \\
+    (3-\lambda)^2 - 1 &= 0 \\
+    \lambda^2 - 6\lambda + 9 - 1 &= 0 \\
+    \lambda^2 - 6\lambda + 8 &= 0 \\
+    (\lambda - 4)(\lambda - 2) &= 0
+\end{align*}
+
+\textbf{Answer:} $\boxed{\lambda_1 = 4, \quad \lambda_2 = 2}$
+
+\section{Differential Equations}
+
+\subsection*{Question 4: First-Order ODE}
+Solve the differential equation:
+$$\frac{dy}{dx} + 2y = e^{-2x}$$
+with initial condition $y(0) = 1$.
+
+\textbf{Solution:}
+
+This is a first-order linear ODE. The integrating factor is:
+$$\mu(x) = e^{\int 2 \, dx} = e^{2x}$$
+
+Multiply both sides by $e^{2x}$:
+\begin{align*}
+    e^{2x}\frac{dy}{dx} + 2e^{2x}y &= e^{-2x} \cdot e^{2x} \\
+    \frac{d}{dx}[e^{2x}y] &= 1 \\
+    e^{2x}y &= x + C \\
+    y &= xe^{-2x} + Ce^{-2x}
+\end{align*}
+
+Using $y(0) = 1$:
+$$1 = 0 + C \cdot 1 \implies C = 1$$
+
+\textbf{Answer:} $\boxed{y = xe^{-2x} + e^{-2x} = e^{-2x}(x + 1)}$
+
+\section{Complex Analysis}
+
+\subsection*{Question 5: Complex Exponential}
+Express $e^{i\pi/4}$ in the form $a + bi$.
+
+\textbf{Solution:}
+
+Using Euler's formula: $e^{i\theta} = \cos\theta + i\sin\theta$
+
+\begin{align*}
+    e^{i\pi/4} &= \cos\left(\frac{\pi}{4}\right) + i\sin\left(\frac{\pi}{4}\right) \\
+    &= \frac{\sqrt{2}}{2} + i\frac{\sqrt{2}}{2} \\
+    &= \frac{\sqrt{2}}{2}(1 + i)
+\end{align*}
+
+\textbf{Answer:} $\boxed{\frac{\sqrt{2}}{2} + i\frac{\sqrt{2}}{2}}$ or $\boxed{\frac{\sqrt{2}}{2}(1 + i)}$
+
+\section{Probability}
+
+\subsection*{Question 6: Normal Distribution}
+The heights of students are normally distributed with mean $\mu = 170$ cm and standard deviation $\sigma = 10$ cm. What is the probability that a randomly selected student is taller than 180 cm?
+
+\textbf{Solution:}
+
+We need to find $P(X > 180)$ where $X \sim N(170, 10^2)$.
+
+Standardize:
+$$Z = \frac{X - \mu}{\sigma} = \frac{180 - 170}{10} = 1$$
+
+Using the standard normal table:
+$$P(Z > 1) = 1 - P(Z \leq 1) = 1 - 0.8413 = 0.1587$$
+
+\textbf{Answer:} $\boxed{0.1587}$ or approximately \textbf{15.87\%}
+
+\vspace{2em}
+
+\begin{center}
+\rule{\textwidth}{0.4pt}
+
+\textbf{End of Test}
+
+\textit{Total Questions: 6 | Total Points: 100}
+\end{center}
+
+\end{document}
