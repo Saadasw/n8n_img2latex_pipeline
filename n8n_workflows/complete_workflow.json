@@ -1,0 +1,284 @@
+{
+  "name": "Image to LaTeX Pipeline - Complete",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "image-to-latex",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryData": true
+        }
+      },
+      "id": "c1e8d7f4-1a2b-3c4d-5e6f-7g8h9i0j1k2l",
+      "name": "Webhook: Upload Image",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "webhookId": "img2latex"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.timestamp }}_{{ $json.filename }}",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "a2b3c4d5-6e7f-8g9h-0i1j-2k3l4m5n6o7p",
+      "name": "Save Image to Temp",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Prepare data for pipeline execution\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\nconst filename = $input.item.binary.data?.fileName || 'test_image.jpg';\nconst outputName = $input.item.json.outputName || `solution_${timestamp}`;\nconst pipelinePath = '/path/to/n8n_img2latex_pipeline';\nconst imagePath = `/tmp/${timestamp}_${filename}`;\n\n// Return formatted data\nreturn {\n  timestamp,\n  filename,\n  outputName,\n  pipelinePath,\n  imagePath,\n  pdfPath: `${pipelinePath}/output/${outputName}.pdf`,\n  texPath: `${pipelinePath}/temp/${outputName}.tex`\n};"
+      },
+      "id": "b3c4d5e6-7f8g-9h0i-1j2k-3l4m5n6o7p8q",
+      "name": "Prepare Paths",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "command": "=cd {{ $json.pipelinePath }} && python3 pipeline.py --image {{ $json.imagePath }} --output {{ $json.outputName }}",
+        "timeout": 180000
+      },
+      "id": "c4d5e6f7-8g9h-0i1j-2k3l-4m5n6o7p8q9r",
+      "name": "Execute Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse pipeline output\nconst stdout = $input.item.json.stdout || '';\nconst stderr = $input.item.json.stderr || '';\nconst exitCode = $input.item.json.exitCode || 0;\n\nconst success = exitCode === 0 && stdout.includes('SUCCESS');\nconst error = stderr || (exitCode !== 0 ? 'Pipeline failed' : '');\n\nreturn {\n  ...($input.item.json),\n  success,\n  error,\n  stdout,\n  stderr,\n  exitCode\n};"
+      },
+      "id": "d5e6f7g8-9h0i-1j2k-3l4m-5n6o7p8q9r0s",
+      "name": "Parse Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "e6f7g8h9-0i1j-2k3l-4m5n-6o7p8q9r0s1t",
+      "name": "Check Success",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "filePath": "={{ $json.pdfPath }}",
+        "options": {}
+      },
+      "id": "f7g8h9i0-1j2k-3l4m-5n6o-7p8q9r0s1t2u",
+      "name": "Read PDF",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/pdf"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "=attachment; filename=\"{{ $json.outputName }}.pdf\""
+              },
+              {
+                "name": "X-Processing-Time",
+                "value": "={{ $json.processingTime }}"
+              }
+            ]
+          }
+        }
+      },
+      "id": "g8h9i0j1-2k3l-4m5n-6o7p-8q9r0s1t2u3v",
+      "name": "Return PDF Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"success\": false,\n  \"error\": $json.error,\n  \"stderr\": $json.stderr,\n  \"exitCode\": $json.exitCode,\n  \"message\": \"Pipeline execution failed. Please check your image and try again.\"\n} }}",
+        "options": {
+          "responseCode": 500,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              }
+            ]
+          }
+        }
+      },
+      "id": "h9i0j1k2-3l4m-5n6o-7p8q-9r0s1t2u3v4w",
+      "name": "Return Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1650, 500]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "fileName": "={{ $json.imagePath }}"
+      },
+      "id": "i0j1k2l3-4m5n-6o7p-8q9r-0s1t2u3v4w5x",
+      "name": "Cleanup Temp Image",
+      "type": "n8n-nodes-base.deleteFile",
+      "typeVersion": 1,
+      "position": [1450, 500]
+    }
+  ],
+  "connections": {
+    "Webhook: Upload Image": {
+      "main": [
+        [
+          {
+            "node": "Save Image to Temp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Image to Temp": {
+      "main": [
+        [
+          {
+            "node": "Prepare Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Paths": {
+      "main": [
+        [
+          {
+            "node": "Execute Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Parse Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Result": {
+      "main": [
+        [
+          {
+            "node": "Check Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Success": {
+      "main": [
+        [
+          {
+            "node": "Read PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cleanup Temp Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PDF": {
+      "main": [
+        [
+          {
+            "node": "Return PDF Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Temp Image": {
+      "main": [
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "your-n8n-instance-id"
+  },
+  "tags": [
+    {
+      "createdAt": "2024-11-23T00:00:00.000Z",
+      "updatedAt": "2024-11-23T00:00:00.000Z",
+      "id": "1",
+      "name": "AI"
+    },
+    {
+      "createdAt": "2024-11-23T00:00:00.000Z",
+      "updatedAt": "2024-11-23T00:00:00.000Z",
+      "id": "2",
+      "name": "LaTeX"
+    },
+    {
+      "createdAt": "2024-11-23T00:00:00.000Z",
+      "updatedAt": "2024-11-23T00:00:00.000Z",
+      "id": "3",
+      "name": "Image Processing"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-11-23T00:00:00.000Z",
+  "versionId": "1"
+}

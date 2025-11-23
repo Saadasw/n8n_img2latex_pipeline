@@ -1,0 +1,363 @@
+{
+  "name": "Image to LaTeX - REST API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "api/v1/convert",
+        "responseMode": "responseNode",
+        "options": {
+          "binaryData": true,
+          "rawBody": false
+        }
+      },
+      "id": "api-webhook-1",
+      "name": "API Endpoint",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 400],
+      "webhookId": "api-convert"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Validate API request\nconst apiKey = $input.item.json.headers['x-api-key'] || $input.item.json.apiKey;\nconst validApiKey = 'your-secret-api-key'; // In production, use environment variable\n\nif (!apiKey || apiKey !== validApiKey) {\n  throw new Error('Invalid or missing API key');\n}\n\nif (!$input.item.binary || !$input.item.binary.data) {\n  throw new Error('No image provided');\n}\n\nconst format = $input.item.json.format || 'pdf'; // pdf or tex\nconst debug = $input.item.json.debug === true;\nconst outputName = $input.item.json.outputName || `api_${Date.now()}`;\n\nreturn {\n  apiKey,\n  format,\n  debug,\n  outputName,\n  validated: true,\n  requestTimestamp: new Date().toISOString()\n};"
+      },
+      "id": "validate-api-1",
+      "name": "Validate Request",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $json.outputName }}.jpg",
+        "dataPropertyName": "data"
+      },
+      "id": "save-image-api-1",
+      "name": "Save Image",
+      "type": "n8n-nodes-base.writeBinaryFile",
+      "typeVersion": 1,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const pipelinePath = '/path/to/n8n_img2latex_pipeline';\nconst outputName = $input.item.json.outputName;\nconst debug = $input.item.json.debug;\n\nreturn {\n  ...$input.item.json,\n  pipelinePath,\n  imagePath: `/tmp/${outputName}.jpg`,\n  pdfPath: `${pipelinePath}/output/${outputName}.pdf`,\n  texPath: `${pipelinePath}/temp/${outputName}.tex`,\n  debugFlag: debug ? '--debug' : ''\n};"
+      },
+      "id": "prepare-api-paths-1",
+      "name": "Prepare Paths",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "command": "=cd {{ $json.pipelinePath }} && python3 pipeline.py --image {{ $json.imagePath }} --output {{ $json.outputName }} {{ $json.debugFlag }}",
+        "timeout": 180000
+      },
+      "id": "execute-api-pipeline-1",
+      "name": "Execute Pipeline",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Parse execution result\nconst exitCode = $input.item.json.exitCode || 0;\nconst stdout = $input.item.json.stdout || '';\nconst stderr = $input.item.json.stderr || '';\nconst success = exitCode === 0;\nconst endTimestamp = new Date().toISOString();\n\n// Calculate processing time\nconst startTime = new Date($input.item.json.requestTimestamp);\nconst endTime = new Date(endTimestamp);\nconst processingTimeMs = endTime - startTime;\n\nreturn {\n  ...$input.item.json,\n  success,\n  error: success ? null : (stderr || 'Unknown error'),\n  stdout,\n  stderr,\n  exitCode,\n  endTimestamp,\n  processingTimeMs,\n  processingTimeSec: (processingTimeMs / 1000).toFixed(2)\n};"
+      },
+      "id": "parse-api-result-1",
+      "name": "Parse Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-api-success-1",
+      "name": "Success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1450, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.format }}",
+              "value2": "tex"
+            }
+          ]
+        }
+      },
+      "id": "check-format-1",
+      "name": "PDF or LaTeX?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "filePath": "={{ $json.pdfPath }}"
+      },
+      "id": "read-pdf-api-1",
+      "name": "Read PDF",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [1850, 250]
+    },
+    {
+      "parameters": {
+        "filePath": "={{ $json.texPath }}"
+      },
+      "id": "read-tex-api-1",
+      "name": "Read LaTeX",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [1850, 350]
+    },
+    {
+      "parameters": {
+        "respondWith": "binary",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "={{ $json.format === 'pdf' ? 'application/pdf' : 'text/plain' }}"
+              },
+              {
+                "name": "Content-Disposition",
+                "value": "=attachment; filename=\"{{ $json.outputName }}.{{ $json.format }}\""
+              },
+              {
+                "name": "X-Processing-Time",
+                "value": "={{ $json.processingTimeSec }}s"
+              },
+              {
+                "name": "X-Status",
+                "value": "success"
+              }
+            ]
+          }
+        }
+      },
+      "id": "return-api-success-1",
+      "name": "Return File",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2050, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"success\": false,\n  \"error\": $json.error,\n  \"message\": \"Failed to process image\",\n  \"details\": {\n    \"exitCode\": $json.exitCode,\n    \"stderr\": $json.debug ? $json.stderr : undefined,\n    \"processingTime\": $json.processingTimeSec + 's'\n  },\n  \"timestamp\": $json.endTimestamp\n} }}",
+        "options": {
+          "responseCode": 500,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "name": "X-Status",
+                "value": "error"
+              }
+            ]
+          }
+        }
+      },
+      "id": "return-api-error-1",
+      "name": "Return Error",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2050, 500]
+    },
+    {
+      "parameters": {
+        "operation": "delete",
+        "fileName": "={{ $json.imagePath }}"
+      },
+      "id": "cleanup-api-1",
+      "name": "Cleanup Temp Files",
+      "type": "n8n-nodes-base.deleteFile",
+      "typeVersion": 1,
+      "position": [1650, 500]
+    }
+  ],
+  "connections": {
+    "API Endpoint": {
+      "main": [
+        [
+          {
+            "node": "Validate Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Request": {
+      "main": [
+        [
+          {
+            "node": "Save Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Image": {
+      "main": [
+        [
+          {
+            "node": "Prepare Paths",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Paths": {
+      "main": [
+        [
+          {
+            "node": "Execute Pipeline",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Pipeline": {
+      "main": [
+        [
+          {
+            "node": "Parse Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Result": {
+      "main": [
+        [
+          {
+            "node": "Success?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success?": {
+      "main": [
+        [
+          {
+            "node": "PDF or LaTeX?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Cleanup Temp Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDF or LaTeX?": {
+      "main": [
+        [
+          {
+            "node": "Read LaTeX",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read PDF": {
+      "main": [
+        [
+          {
+            "node": "Return File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read LaTeX": {
+      "main": [
+        [
+          {
+            "node": "Return File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleanup Temp Files": {
+      "main": [
+        [
+          {
+            "node": "Return Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "your-n8n-instance-id"
+  },
+  "tags": [
+    {
+      "id": "1",
+      "name": "API"
+    },
+    {
+      "id": "2",
+      "name": "REST"
+    },
+    {
+      "id": "3",
+      "name": "LaTeX"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-11-23T00:00:00.000Z",
+  "versionId": "1"
+}

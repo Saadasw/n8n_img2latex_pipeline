@@ -1,0 +1,316 @@
+{
+  "name": "Image to LaTeX - Batch Processing",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "/watch/images",
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        }
+      },
+      "id": "watch-folder-1",
+      "name": "Watch Folder",
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [250, 400]
+    },
+    {
+      "parameters": {
+        "path": "={{ $json.path }}",
+        "options": {}
+      },
+      "id": "read-images-1",
+      "name": "Read Images",
+      "type": "n8n-nodes-base.readBinaryFiles",
+      "typeVersion": 1,
+      "position": [450, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Process each image\nconst filename = $input.item.binary.data.fileName;\nconst timestamp = new Date().toISOString().replace(/[:.]/g, '-');\nconst outputName = `batch_${timestamp}_${filename.replace(/\\.[^.]+$/, '')}`;\n\nreturn {\n  filename,\n  outputName,\n  timestamp,\n  pipelinePath: '/path/to/n8n_img2latex_pipeline',\n  imagePath: $input.item.json.path,\n  pdfPath: `/path/to/n8n_img2latex_pipeline/output/${outputName}.pdf`,\n  originalPath: $input.item.json.path\n};"
+      },
+      "id": "prepare-batch-1",
+      "name": "Prepare Each Image",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [650, 400]
+    },
+    {
+      "parameters": {
+        "command": "=cd {{ $json.pipelinePath }} && python3 pipeline.py --image {{ $json.imagePath }} --output {{ $json.outputName }}",
+        "timeout": 180000
+      },
+      "id": "process-image-1",
+      "name": "Process Image",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [850, 400]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Check processing result\nconst exitCode = $input.item.json.exitCode || 0;\nconst stdout = $input.item.json.stdout || '';\nconst stderr = $input.item.json.stderr || '';\n\nconst success = exitCode === 0;\nconst error = stderr || '';\n\nreturn {\n  ...$input.item.json,\n  success,\n  error,\n  processingStatus: success ? 'completed' : 'failed'\n};"
+      },
+      "id": "check-result-1",
+      "name": "Check Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1050, 400]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.success }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "split-success-fail-1",
+      "name": "Success or Fail?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1250, 400]
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "sourcePath": "={{ $json.originalPath }}",
+        "destinationPath": "=/processed/{{ $json.filename }}"
+      },
+      "id": "move-success-1",
+      "name": "Move to Processed",
+      "type": "n8n-nodes-base.moveFile",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    },
+    {
+      "parameters": {
+        "operation": "move",
+        "sourcePath": "={{ $json.originalPath }}",
+        "destinationPath": "=/failed/{{ $json.filename }}"
+      },
+      "id": "move-failed-1",
+      "name": "Move to Failed",
+      "type": "n8n-nodes-base.moveFile",
+      "typeVersion": 1,
+      "position": [1450, 500]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "fileName": "batch_processing_log.csv",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "log-success-1",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.writeFile",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "fileName": "batch_processing_errors.csv",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "log-error-1",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.writeFile",
+      "typeVersion": 1,
+      "position": [1650, 500]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "// Aggregate results\nconst items = $input.all();\nconst total = items.length;\nconst successful = items.filter(item => item.json.success).length;\nconst failed = total - successful;\n\nreturn {\n  batchTimestamp: new Date().toISOString(),\n  total,\n  successful,\n  failed,\n  successRate: ((successful / total) * 100).toFixed(2) + '%',\n  results: items.map(item => ({\n    filename: item.json.filename,\n    status: item.json.processingStatus,\n    pdfPath: item.json.success ? item.json.pdfPath : null,\n    error: item.json.error || null\n  }))\n};"
+      },
+      "id": "summarize-1",
+      "name": "Summarize Batch",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1850, 400]
+    },
+    {
+      "parameters": {
+        "operation": "sendEmail",
+        "fromEmail": "noreply@yourdomain.com",
+        "toEmail": "admin@yourdomain.com",
+        "subject": "=Batch Processing Complete: {{ $json.total }} images processed",
+        "emailFormat": "html",
+        "message": "=<h2>Batch Processing Summary</h2>\n<p><strong>Timestamp:</strong> {{ $json.batchTimestamp }}</p>\n<ul>\n  <li><strong>Total:</strong> {{ $json.total }}</li>\n  <li><strong>Successful:</strong> {{ $json.successful }}</li>\n  <li><strong>Failed:</strong> {{ $json.failed }}</li>\n  <li><strong>Success Rate:</strong> {{ $json.successRate }}</li>\n</ul>\n<h3>Details</h3>\n<pre>{{ JSON.stringify($json.results, null, 2) }}</pre>",
+        "options": {}
+      },
+      "id": "send-notification-1",
+      "name": "Send Email Notification",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2,
+      "position": [2050, 400],
+      "disabled": true
+    }
+  ],
+  "connections": {
+    "Watch Folder": {
+      "main": [
+        [
+          {
+            "node": "Read Images",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Images": {
+      "main": [
+        [
+          {
+            "node": "Prepare Each Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Each Image": {
+      "main": [
+        [
+          {
+            "node": "Process Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Image": {
+      "main": [
+        [
+          {
+            "node": "Check Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Result": {
+      "main": [
+        [
+          {
+            "node": "Success or Fail?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Success or Fail?": {
+      "main": [
+        [
+          {
+            "node": "Move to Processed",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move to Failed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to Processed": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move to Failed": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Success": {
+      "main": [
+        [
+          {
+            "node": "Summarize Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Error": {
+      "main": [
+        [
+          {
+            "node": "Summarize Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize Batch": {
+      "main": [
+        [
+          {
+            "node": "Send Email Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "meta": {
+    "instanceId": "your-n8n-instance-id"
+  },
+  "tags": [
+    {
+      "id": "1",
+      "name": "Batch Processing"
+    },
+    {
+      "id": "2",
+      "name": "Automation"
+    },
+    {
+      "id": "3",
+      "name": "LaTeX"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-11-23T00:00:00.000Z",
+  "versionId": "1"
+}
